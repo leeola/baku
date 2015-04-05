@@ -1,7 +1,0 @@
-{
-  "to_be_indexed" : [
-    "http://kdlearn.kd.io/feed.xml"
-  ],
-  "port" : 5200,
-  "elasticsearch" : "http://localhost:9200"
-}
