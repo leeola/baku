@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"xml"
+	"time"
 )
 
 const (
@@ -17,9 +17,14 @@ const (
 )
 
 type Config struct {
-	ToBeIndexed   []string `json:"to_be_indexed"`
-	Port          int      `json:"port"`
-	Elasticsearch string   `json:"elasticsearch"`
+	// The number of *minutes* between crawls of the ToBeIndexed
+	Delay time.Duration `json:"delay"`
+
+	// A series of Crawler feeds.
+	ToBeIndexed []string `json:"to_be_indexed"`
+
+	Port          int    `json:"port"`
+	Elasticsearch string `json:"elasticsearch"`
 }
 
 func main() {
@@ -29,24 +34,42 @@ func main() {
 		os.Exit(1)
 	}
 
-	var esUrl = config.Elasticsearch
+	// Not currently using ElasticSearch. To be implemented very soon.
+	//var esUrl = config.Elasticsearch
+	//err = checkElasticsearchIsUp(config.Elasticsearch)
+	//if err != nil {
+	//	log.Printf("Elasticsearch is not reachable at %s, error: %v", esUrl, err)
+	//	os.Exit(1)
+	//}
+	//var failedUrls = checkIndexUrlsAreCrawable(config.ToBeIndexed)
+	//if len(failedUrls) > 0 {
+	//	log.Printf("%v url(s) are not crawable", failedUrls)
+	//	os.Exit(1)
+	//}
 
-	err = checkElasticsearchIsUp(config.Elasticsearch)
+	s, err := NewBleveSearcher("/tmp/baku.bleve.index")
 	if err != nil {
-		log.Printf("Elasticsearch is not reachable at %s, error: %v", esUrl, err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
-	var failedUrls = checkIndexUrlsAreCrawable(config.ToBeIndexed)
-	if len(failedUrls) > 0 {
-		log.Printf("%v url(s) are not crawable", failedUrls)
-		os.Exit(1)
+	c, err := NewCreepy(config, s)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	// Start the Creepy Crawlers (tehehe)
+	c.Start()
+
+	// No web server yet, so waiting here.
+	fmt.Println("Web server running on port 3000, Ctrl-C to exit.")
+	WebListen(s)
 }
 
 func checkIndexUrlsAreCrawable(urls []string) []string {
 	var failedUrls = []string{}
 	for _, url := range urls {
+		// TODO: Should use a HEAD request here, since the feed's can be quite
+		// large. No reason to download them all, i think.
 		var resp, err = http.Get(url)
 		if err != nil {
 			log.Println(err)
@@ -61,8 +84,9 @@ func checkIndexUrlsAreCrawable(urls []string) []string {
 
 		resp.Body.Close()
 
-		var q Query
-		xml.Unmarshal(xmlFile, &q)
+		// Uncommented, because undefined
+		//var q Query
+		//xml.Unmarshal(xmlFile, &q)
 
 		// log.Println(string(body))
 	}
@@ -70,20 +94,20 @@ func checkIndexUrlsAreCrawable(urls []string) []string {
 	return failedUrls
 }
 
-func parseConfigFile() (*Config, error) {
+func parseConfigFile() (Config, error) {
 	var config Config
 
 	var file, err = ioutil.ReadFile(CONFIG_FILE)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
 	err = json.Unmarshal(file, &config)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
-	return &config, nil
+	return config, nil
 }
 
 func checkElasticsearchIsUp(url string) error {
