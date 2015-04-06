@@ -71,7 +71,7 @@ func (s *BleveSearcher) Index(sis ...SearchItem) error {
 }
 
 func (s *BleveSearcher) Search(q string) ([]SearchItem, error) {
-	s.logger.Info("Executing query '%q'", q)
+	s.logger.Infof("Executing query '%s'", q)
 
 	request := bleve.NewSearchRequest(bleve.NewMatchQuery(q))
 	request.Fields = []string{
