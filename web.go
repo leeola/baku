@@ -11,7 +11,7 @@ import (
 // TODO: This whole WebListen section needs to be rewritten into a sane
 // implementation. The WebListen function and the embedded http handler
 // was just a rushed implementation for a working server.
-func WebListen(s Searcher) {
+func WebListen(port int, s Searcher, l Logger) {
 	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
 		var items []SearchItem
 		var err error
@@ -21,15 +21,13 @@ func WebListen(s Searcher) {
 		if q != "" {
 			items, err = s.Search(q)
 			if err != nil {
-				// Again, need access to the logger lol
-				fmt.Println(err)
+				l.Error("Error Searching:", err)
 			}
 		}
 
 		b, err := json.Marshal(items)
 		if err != nil {
-			// Again, need access to the logger lol
-			fmt.Println(err)
+			l.Error("Error Marshalling []SearchItem:", err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")

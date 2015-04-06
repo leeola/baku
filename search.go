@@ -29,19 +29,17 @@ type Searcher interface {
 	Search(string) ([]SearchItem, error)
 }
 
-// TODO: Implement the elasticsearch searcher.
-type ElasticSearcher struct {
-}
-
 // A super naive Bleve implementation of a Searcher
 //
 // TODO: Move BleveSearcher into a sub-package (since it won't be part
 // of the final baku implementation)
 type BleveSearcher struct {
-	index bleve.Index
+	// The path that bleve will use to store/load the index.
+	index  bleve.Index
+	logger Logger
 }
 
-func NewBleveSearcher(p string) (*BleveSearcher, error) {
+func NewBleveSearcher(p string, l Logger) (*BleveSearcher, error) {
 	i, err := bleve.New(p, bleve.NewIndexMapping())
 	if err == bleve.ErrorIndexPathExists {
 		i, err = bleve.Open(p)
@@ -51,11 +49,13 @@ func NewBleveSearcher(p string) (*BleveSearcher, error) {
 	}
 
 	return &BleveSearcher{
-		index: i,
+		index:  i,
+		logger: l,
 	}, nil
 }
 
 func (s *BleveSearcher) Index(sis ...SearchItem) error {
+	s.logger.Info("Indexing ", len(sis), " SearchItems")
 	for _, si := range sis {
 		// Use the link as the index id.. in theory to reduce duplicate
 		// entries.. hopefully.. in theory.. /handwave magic
@@ -71,6 +71,8 @@ func (s *BleveSearcher) Index(sis ...SearchItem) error {
 }
 
 func (s *BleveSearcher) Search(q string) ([]SearchItem, error) {
+	s.logger.Info("Executing query '%q'", q)
+
 	request := bleve.NewSearchRequest(bleve.NewMatchQuery(q))
 	request.Fields = []string{
 		"content", "title", "link",
@@ -97,4 +99,8 @@ func (s *BleveSearcher) Search(q string) ([]SearchItem, error) {
 	}
 
 	return sis, nil
+}
+
+// TODO: Implement the elasticsearch searcher.
+type ElasticSearcher struct {
 }

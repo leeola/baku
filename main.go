@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/Sirupsen/logrus"
 )
 
 const (
@@ -16,24 +18,51 @@ const (
 	ES_TAGLINE  = "You Know, for Search"
 )
 
+// The config loaded from config.json
 type Config struct {
 	// The number of *minutes* between crawls of the ToBeIndexed
-	Delay time.Duration `json:"delay"`
-
+	CrawlDelay time.Duration `json:"crawl_delay"`
+	// The path to use as the bleve index.
+	BleveIndex string `json:"bleve_index"`
 	// A series of Crawler feeds.
 	ToBeIndexed []string `json:"to_be_indexed"`
-
-	Port          int    `json:"port"`
+	// ??
 	Elasticsearch string `json:"elasticsearch"`
+	// The web server port
+	WebPort int `json:"webport"`
+}
+
+// A logger interface so that we can change whatever logger we choose.
+type Logger interface {
+	Debug(...interface{})
+	Error(...interface{})
+	Fatal(...interface{})
+	Info(...interface{})
+	Print(...interface{})
+	Warn(...interface{})
+	Debugf(string, ...interface{})
+	Errorf(string, ...interface{})
+	Fatalf(string, ...interface{})
+	Infof(string, ...interface{})
+	Printf(string, ...interface{})
+	Warnf(string, ...interface{})
 }
 
 func main() {
+	// Not sure what logger we want to use. Using this for now because..
+	// reasons?
+	var l Logger = logrus.New()
+
 	var config, err = parseConfigFile()
 	if err != nil {
-		log.Printf("Unable to parse %s, error: %v", CONFIG_FILE, err)
+		l.Errorf("Unable to parse %s, error: %v", CONFIG_FILE, err)
 		os.Exit(1)
 	}
 
+	os.Exit(runBaku(config, l))
+}
+
+func runBaku(config Config, l Logger) (exit int) {
 	// Not currently using ElasticSearch. To be implemented very soon.
 	//var esUrl = config.Elasticsearch
 	//err = checkElasticsearchIsUp(config.Elasticsearch)
@@ -47,22 +76,27 @@ func main() {
 	//	os.Exit(1)
 	//}
 
-	s, err := NewBleveSearcher("/tmp/baku.bleve.index")
+	s, err := NewBleveSearcher("/tmp/baku.bleve.index", l)
 	if err != nil {
-		log.Fatal(err)
+		l.Error(err)
+		return 1
 	}
 
-	c, err := NewCreepy(config, s)
+	c, err := NewCreepy(config, s, l)
 	if err != nil {
-		log.Fatal(err)
+		l.Error(err)
+		return 1
 	}
 
 	// Start the Creepy Crawlers (tehehe)
 	c.Start()
 
-	// No web server yet, so waiting here.
-	fmt.Println("Web server running on port 3000, Ctrl-C to exit.")
-	WebListen(s)
+	// And the web server
+	l.Printf("Web server running on port %d, Ctrl-C to exit.",
+		config.WebPort)
+	WebListen(config.WebPort, s, l)
+
+	return 0
 }
 
 func checkIndexUrlsAreCrawable(urls []string) []string {

@@ -3,11 +3,10 @@ package main
 import (
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/Sirupsen/logrus"
 )
 
 type Crawler interface {
@@ -24,19 +23,18 @@ type Creepy struct {
 	// Our search instance
 	Searcher Searcher
 
-	logger *logrus.Logger
+	logger Logger
 }
 
-func NewCreepy(c Config, s Searcher) (*Creepy, error) {
-	// We'll probably have this passed in soon.. but for now, wild wild west
-	logger := logrus.New()
-
-	if c.Delay == 0 {
-		return nil, errors.New("baku.Creepy: Crawl delay ")
-	} else if c.Delay == -1 {
+func NewCreepy(c Config, s Searcher, l Logger) (*Creepy, error) {
+	if c.CrawlDelay == 0 {
+		return nil, errors.New(fmt.Sprint(
+			"baku.Creepy: CrawlDelay ", c.CrawlDelay, "is disabled to "+
+				"prevent accidental loop. Use -1 if you need no delay"))
+	} else if c.CrawlDelay == -1 {
 		// Apparently the caller *really* wants to run without a delay..
-		logger.Warn("Config Delay set to -1, running Creepy without delay")
-		c.Delay = 0
+		l.Warn("Config CrawlDelay set to -1, running Creepy without delay")
+		c.CrawlDelay = 0
 	}
 
 	if len(c.ToBeIndexed) == 0 {
@@ -56,7 +54,7 @@ func NewCreepy(c Config, s Searcher) (*Creepy, error) {
 		Config:   c,
 		Searcher: s,
 		Crawlers: crawlers,
-		logger:   logger,
+		logger:   l,
 	}, nil
 }
 
@@ -81,7 +79,7 @@ func (c *Creepy) Start() {
 		for {
 			c.logger.Info("Crawling")
 			c.callCrawlers()
-			time.Sleep(c.Config.Delay * time.Minute)
+			time.Sleep(c.Config.CrawlDelay * time.Minute)
 		}
 	}()
 }

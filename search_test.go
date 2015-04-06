@@ -8,6 +8,21 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+type FakeLogger struct{}
+
+func (l *FakeLogger) Debug(a ...interface{})            {}
+func (l *FakeLogger) Debugf(s string, a ...interface{}) {}
+func (l *FakeLogger) Error(a ...interface{})            {}
+func (l *FakeLogger) Errorf(s string, a ...interface{}) {}
+func (l *FakeLogger) Fatal(a ...interface{})            {}
+func (l *FakeLogger) Fatalf(s string, a ...interface{}) {}
+func (l *FakeLogger) Info(a ...interface{})             {}
+func (l *FakeLogger) Infof(s string, a ...interface{})  {}
+func (l *FakeLogger) Print(a ...interface{})            {}
+func (l *FakeLogger) Printf(s string, a ...interface{}) {}
+func (l *FakeLogger) Warn(a ...interface{})             {}
+func (l *FakeLogger) Warnf(s string, a ...interface{})  {}
+
 func TestBleveSearcherSearch(t *testing.T) {
 	tmpDir := "./_test/tmp"
 	os.MkdirAll(tmpDir, 0644)
@@ -17,7 +32,7 @@ func TestBleveSearcherSearch(t *testing.T) {
 		// Remove the tmp dir
 		os.RemoveAll(indexDir)
 
-		s, err := NewBleveSearcher(indexDir)
+		s, err := NewBleveSearcher(indexDir, &FakeLogger{})
 		So(err, ShouldBeNil)
 
 		err = s.Index([]SearchItem{
