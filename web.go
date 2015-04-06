@@ -38,5 +38,5 @@ func WebListen(port int, s Searcher, l Logger) {
 		}
 	})
 
-	http.ListenAndServe(":3000", nil)
+	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
