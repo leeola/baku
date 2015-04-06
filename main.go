@@ -76,7 +76,7 @@ func runBaku(config Config, l Logger) (exit int) {
 	//	os.Exit(1)
 	//}
 
-	s, err := NewBleveSearcher("/tmp/baku.bleve.index", l)
+	s, err := NewBleveSearcher(config.BleveIndex, l)
 	if err != nil {
 		l.Error(err)
 		return 1
